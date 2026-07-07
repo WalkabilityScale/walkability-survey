@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Perceived Walkability Survey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#F4F6F3;
+    --surface:#FFFFFF;
+    --ink:#17241F;
+    --muted:#42504A;
+    --line:#E1E7E2;
+    --green:#2E7D5B;
+    --green-dark:#245F46;
+    --green-tint:#EAF4EE;
+    --green-tint-line:#BEDDCC;
+    --warn:#9A5B12;
+    --radius:14px;
+    --maxw:760px;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    padding:24px 16px 64px;
+  }
+  .shell{max-width:var(--maxw);margin:0 auto;}
+
+  /* ---------- progress ---------- */
+  #progress-wrap{
+    position:sticky;top:12px;z-index:20;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:13px 18px;
+    margin-bottom:20px;
+    box-shadow:0 1px 2px rgba(23,36,31,.04);
+    display:none;
+  }
+  .progress-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+  .progress-label{font-size:14px;font-weight:600;letter-spacing:.01em;color:var(--muted);}
+  .progress-pct{font-size:14px;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums;}
+  .track{position:relative;height:11px;background:var(--green-tint);border-radius:999px;overflow:visible;}
+  .fill{
+    position:absolute;left:0;top:0;height:100%;width:0%;
+    background:linear-gradient(90deg,var(--green),var(--green-dark));
+    border-radius:999px;
+    transition:width .45s cubic-bezier(.4,0,.2,1);
+  }
+  .fill::after{
+    content:"";position:absolute;right:-6px;top:50%;
+    width:18px;height:18px;transform:translateY(-50%);
+    background:var(--surface);border:4px solid var(--green);border-radius:50%;
+    box-shadow:0 1px 3px rgba(23,36,31,.18);
+  }
+
+  /* ---------- cards / screens ---------- */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:32px 30px;
+    box-shadow:0 1px 2px rgba(23,36,31,.04);
+  }
+  @media(max-width:560px){ .card{padding:22px 18px;} body{padding:16px 12px 56px;} }
+
+  .display{display:none;}
+  .display.active{display:block;animation:rise .35s ease;}
+  #intro,#thanks{display:none;}
+  #intro.active,#thanks.active{display:block;animation:rise .35s ease;}
+  @keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+  h1{
+    font-family:'Fraunces',Georgia,serif;
+    font-weight:600;font-size:34px;line-height:1.12;
+    letter-spacing:-.01em;margin:0 0 6px;
+  }
+  .part-title{
+    font-family:'Fraunces',Georgia,serif;
+    font-weight:600;font-size:24px;line-height:1.18;margin:0 0 4px;
+  }
+  .part-sub{color:var(--muted);font-size:15.5px;margin:0 0 22px;}
+  .eyebrow{
+    text-transform:uppercase;letter-spacing:.14em;font-size:12px;font-weight:600;
+    color:var(--green);margin:0 0 10px;
+  }
+  .cat-title{
+    font-weight:600;font-size:15px;margin:26px 0 2px;
+    color:var(--ink);
+    padding-bottom:8px;border-bottom:1px solid var(--line);
+  }
+  .divider{height:1px;background:var(--line);margin:28px 0;}
+
+  /* ---------- intro ---------- */
+  .intro-lead{font-size:16.5px;color:var(--muted);margin:0 0 20px;}
+  ul.instructions{list-style:none;padding:0;margin:0 0 26px;}
+  ul.instructions li{
+    position:relative;padding:12px 14px 12px 42px;margin-bottom:8px;
+    background:var(--green-tint);border:1px solid var(--green-tint-line);
+    border-radius:10px;font-size:15px;line-height:1.55;
+  }
+  ul.instructions li::before{
+    content:"";position:absolute;left:16px;top:19px;
+    width:9px;height:9px;border-radius:50%;background:var(--green);
+  }
+  ul.instructions li strong{color:var(--green-dark);}
+  .meta-note{font-size:14.5px;color:var(--muted);margin:0 0 26px;}
+
+  /* ---------- demographics ---------- */
+  .field{margin-bottom:22px;}
+  .field > label.flabel,legend.flabel{
+    display:block;font-weight:600;font-size:15px;margin-bottom:10px;
+  }
+  .flabel .tag{font-weight:500;color:var(--muted);font-size:13.5px;}
+  input[type=text]{
+    width:100%;padding:12px 14px;font-size:15px;font-family:inherit;color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;background:#fff;
+  }
+  input[type=text]:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px var(--green-tint);}
+  .hint{font-size:13.5px;color:var(--muted);margin-top:6px;}
+  .hint.warn{color:var(--warn);}
+
+  /* ---------- question blocks ---------- */
+  .item{
+    padding:20px;margin:16px 0;border:1px solid var(--line);
+    border-radius:12px;background:#FCFDFC;
+  }
+  .item.invalid,fieldset.invalid{border-color:#C0553B;background:#FCF4F1;}
+  input[type=text].invalid{border-color:#C0553B;background:#FCF4F1;}
+  .item-name{font-weight:600;font-size:16.5px;margin-bottom:14px;line-height:1.4;}
+  fieldset.qblock{border:0;margin:0;padding:0;min-width:0;}
+  fieldset.qblock + fieldset.qblock{margin-top:14px;}
+  .qprompt{
+    font-size:14.5px;font-weight:600;color:var(--muted);
+    margin-bottom:10px;line-height:1.45;
+  }
+  fieldset.qii{
+    margin-top:14px;padding:16px 16px 6px;border-left:3px solid var(--green-tint-line);
+    background:var(--green-tint);border-radius:0 10px 10px 0;
+  }
+  fieldset.qii .qprompt{color:var(--green-dark);}
+  fieldset.hidden{display:none;}
+
+  .opts{display:flex;flex-direction:column;gap:8px;}
+  label.opt{
+    display:flex;align-items:flex-start;gap:11px;
+    padding:11px 14px;border:1px solid var(--line);border-radius:10px;
+    background:#fff;cursor:pointer;font-size:14.5px;line-height:1.4;
+    transition:border-color .12s,background .12s;
+  }
+  label.opt:hover{border-color:var(--green-tint-line);}
+  label.opt input{
+    appearance:none;-webkit-appearance:none;margin:0;flex:0 0 auto;
+    width:18px;height:18px;border:2px solid #C3CDC6;border-radius:50%;
+    margin-top:1px;position:relative;transition:border-color .12s;
+  }
+  label.opt input:checked{border-color:var(--green);}
+  label.opt input:checked::after{
+    content:"";position:absolute;inset:2px;border-radius:50%;background:var(--green);
+  }
+  label.opt:has(input:checked){border-color:var(--green);background:var(--green-tint);}
+  label.opt input:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
+  .opt-text{padding-top:0;}
+
+  /* ---------- nav ---------- */
+  .nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:28px;}
+  .err-inline{color:#C0553B;font-size:13.5px;font-weight:500;flex:1;}
+  button{font-family:inherit;cursor:pointer;border-radius:10px;font-weight:600;font-size:15px;border:1px solid transparent;transition:background .12s,border-color .12s,transform .05s;}
+  button:active{transform:translateY(1px);}
+  .btn-primary{background:var(--green);color:#fff;padding:13px 26px;}
+  .btn-primary:hover{background:var(--green-dark);}
+  .btn-primary:disabled{opacity:.55;cursor:default;}
+  .btn-ghost{background:transparent;color:var(--muted);border-color:var(--line);padding:13px 20px;}
+  .btn-ghost:hover{border-color:var(--muted);color:var(--ink);}
+  .btn-big{padding:15px 34px;font-size:16px;}
+
+  /* ---------- thanks ---------- */
+  #thanks .check{
+    width:56px;height:56px;border-radius:50%;background:var(--green-tint);
+    border:2px solid var(--green);display:flex;align-items:center;justify-content:center;margin-bottom:18px;
+  }
+  #thanks .check svg{width:28px;height:28px;stroke:var(--green);}
+  .pdf-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:22px;}
+  .link-again{background:none;border:0;color:var(--green);font-weight:600;padding:6px 0;text-decoration:underline;}
+
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div id="progress-wrap">
+    <div class="progress-top">
+      <span class="progress-label" id="progress-label">Section 1 of 6</span>
+      <span class="progress-pct" id="progress-pct">0%</span>
+    </div>
+    <div class="track"><div class="fill" id="progress-fill"></div></div>
+  </div>
+
+  <!-- INTRO -->
+  <section id="intro" class="card active">
+    <p class="eyebrow">Neighbourhood walking research</p>
+    <h1>Perceived Walkability Survey</h1>
+    <p class="intro-lead">We want to understand how different aspects of your neighbourhood encourage or discourage your walking.</p>
+    <ul class="instructions">
+      <li><strong>Time commitment.</strong> Please set aside about 10 to 15 minutes to complete this survey.</li>
+      <li><strong>Your perspectives.</strong> We are interested in your perception of various neighbourhood aspects and whether they encourage or discourage your walking behaviour.</li>
+      <li><strong>Facilities, destinations, situations and places.</strong> For these stationary items, along with your perception, we will ask where you usually experience them &mdash; for example, up to a 10-minute walk or an 11&ndash;20 minute walk from your residence.</li>
+      <li><strong>Defining access.</strong> When evaluating access to services or facilities, think beyond just the closest one. Consider whether a place is truly usable for you &mdash; including affordability and personal preference. The one that is usable for you is the one to consider.</li>
+      <li><strong>Neighbourhood conditions.</strong> For non-stationary conditions, in addition to your perception, we simply ask whether or not the aspect exists in your neighbourhood.</li>
+      <li><strong>Changed your mind?</strong> At any time before you submit, you can use the <em>Back</em> button to return to an earlier section and correct your answers.</li>
+    </ul>
+    <p class="meta-note">The survey moves through six short sections. You can download a copy of your answers as a PDF at the end.</p>
+    <button class="btn-primary btn-big" id="start-btn">Start survey</button>
+  </section>
+
+  <!-- DISPLAYS injected here -->
+  <div id="displays"></div>
+
+  <!-- THANKS -->
+  <section id="thanks" class="card">
+    <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></div>
+    <h1>Thank you</h1>
+    <p class="intro-lead" id="thanks-msg">Your responses have been recorded. We appreciate the time you took to share your perspective.</p>
+    <div class="pdf-row">
+      <button class="btn-primary" id="pdf-btn">Download my answers (PDF)</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+
+/* ===================================================================
+   BACKEND
+   =================================================================== */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxS0v8DqGbKRCcFxoPWFjkuGvRzO7gI5ha-yv5nz9mpozQQK4ORfGhgXkD3zcq3MbsV7w/exec";
+
+/* ===================================================================
+   OPTION SETS
+   =================================================================== */
+const ENCOURAGE = [
+  "Strongly encourages my walking",
+  "Somewhat encourages my walking",
+  "Slightly encourages my walking",
+  "Irrelevant / does not encourage me to walk",
+  "Not sure / Never experienced it"
+];
+const DISCOURAGE = [
+  "Strongly discourages my walking",
+  "Somewhat discourages my walking",
+  "Slightly discourages my walking",
+  "Irrelevant / does not discourage my walking",
+  "Not sure / Never experienced it"
+];
+const SKIP_VALS = [ENCOURAGE[3], ENCOURAGE[4], DISCOURAGE[3], DISCOURAGE[4]];
+
+const LOCATION = [
+  "Up to a 10-minute walk from my residence",
+  "An 11\u201320 minute walk from my residence",
+  "It does not exist in my neighbourhood / Not sure"
+];
+const EXIST_BINARY = ["Yes", "Sometimes or in some places", "No or Not sure"];
+
+/* ===================================================================
+   PART DEFINITIONS
+   =================================================================== */
+const P1A = {
+  qiPrompt: "Would this aspect encourage you to walk?  (select one)",
+  qiOptions: ENCOURAGE,
+  qiiPrompt: "Where do you usually experience this factor in your neighbourhood?  (select one)",
+  qiiOptions: LOCATION, qiiShort: "Location"
+};
+const P1B = {
+  qiPrompt: "Would this aspect encourage you to walk?  (select one)",
+  qiOptions: ENCOURAGE,
+  qiiPrompt: "Does this factor exist in your neighbourhood?  (up to a 20-minute walk from your residence)",
+  qiiOptions: EXIST_BINARY, qiiShort: "Exists"
+};
+const P2A = {
+  qiPrompt: "Would this aspect discourage your walking behaviour?  (select one)",
+  qiOptions: DISCOURAGE,
+  qiiPrompt: "Where do you usually experience this factor in your neighbourhood?  (select one)",
+  qiiOptions: LOCATION, qiiShort: "Location"
+};
+const P2B = {
+  qiPrompt: "Does this factor discourage your walking behaviour?  (select one)",
+  qiOptions: DISCOURAGE,
+  qiiPrompt: "Does this aspect exist in your neighbourhood?",
+  qiiOptions: EXIST_BINARY, qiiShort: "Exists"
+};
+
+/* ===================================================================
+   ITEMS
+   =================================================================== */
+const ITEMS_1A_pleasant = [
+  ["1A-1","Access to green spaces (e.g., parks)"],
+  ["1A-2","Entrances to hiking trails"],
+  ["1A-3","Sidewalks that are separated from traffic lanes (e.g., separated from bike lanes)"],
+  ["1A-4","Access to water surfaces (e.g., lakes and rivers)"],
+  ["1A-5","Resting places (benches)"],
+  ["1A-6","Public washrooms"]
+];
+const ITEMS_1A_ready = [
+  ["1A-7","Access to indoor exercising tracks (during cold and hot weather)"],
+  ["1A-8","Access to pedestrian areas with shade (during hot weather)"],
+  ["1A-9","Snow removal off pedestrian infrastructure (e.g., sidewalks)"]
+];
+const ITEMS_1A_access = [
+  ["1A-10","Medical amenities (e.g., pharmacies, walk-in clinics)"],
+  ["1A-11","Shopping areas (e.g., malls)"],
+  ["1A-12","Entertainment facilities (e.g., cinemas and bowling centres)"],
+  ["1A-13","Children\u2019s learning facilities (e.g., childcare centres and schools)"],
+  ["1A-14","Children\u2019s recreational facilities (e.g., playgrounds, skating spaces)"],
+  ["1A-15","Dining places (e.g., restaurants and cafes)"],
+  ["1A-16","Grocery (e.g., vegetable and fruit stores, supermarkets, etc.)"],
+  ["1A-17","Exercise facilities (e.g., gyms, sport complexes, etc.)"],
+  ["1A-18","Cultural places / events (e.g., community centres, food festivals)"],
+  ["1A-19","Religious places / events (e.g., mosques, churches, prayers, etc.)"],
+  ["1A-20","Libraries"],
+  ["1A-21","Your education place or workplace"]
+];
+const ITEMS_1B = [
+  ["1B-22","Social cohesion (community and neighbours)"],
+  ["1B-23","Family or friends are in the neighbourhood"],
+  ["1B-24","Cleanliness of the neighbourhood"],
+  ["1B-25","Good neighbourhood-built environment (e.g., good street design and architecture)"],
+  ["1B-26","Exposure to adequate sunlight while walking"],
+  ["1B-27","Pleasant views (e.g., nature landscapes)"]
+];
+const ITEMS_2A_street = [
+  ["2A-1","Inconvenient sidewalks (e.g., narrow, cracked, or unmaintained)"],
+  ["2A-2","Unavailability of sidewalks"],
+  ["2A-3","Street blockage (e.g., construction work)"],
+  ["2A-4","Long waiting time to cross at pedestrian lights"],
+  ["2A-5","Lack of pedestrian crosswalks (street crossing areas)"],
+  ["2A-6","Inconvenience of public transit (e.g., bus stops far away or delayed schedules)"],
+  ["2A-7","People crowding in areas or streets"],
+  ["2A-8","Presence of homelessness"],
+  ["2A-9","Areas with only residential houses (e.g., nothing nearby to walk to)"],
+  ["2A-10","High-speed traffic or reckless driving"]
+];
+const ITEMS_2A_night = [
+  ["2A-11","Wild animals (e.g., raccoons, coyotes, skunks)"],
+  ["2A-12","Unlit / dark areas or streets"],
+  ["2A-13","Early closure of services (e.g., cafes, libraries, food stores, etc.)"],
+  ["2A-14","Less frequent public transit at night"]
+];
+const ITEMS_2B_appro = [
+  ["2B-17","Steep hills (elevations)"],
+  ["2B-18","Smell of weed / drugs in the street"],
+  ["2B-19","Neighbourhood disorder (e.g., graffiti, unmaintained buildings)"],
+  ["2B-20","Confusing road / place signs"],
+  ["2B-21","Air pollution (e.g., car emissions, construction dust)"],
+  ["2B-22","Noise pollution (e.g., construction noise, traffic noise)"]
+];
+const ITEMS_2B_safety = [
+  ["2B-23","People loitering around (e.g., smoking groups, individuals waiting without purpose)"],
+  ["2B-24","Aggressive behaviour from others (e.g., residents with unleashed dogs)"],
+  ["2B-25","Discriminative / harassing behaviour from others"],
+  ["2B-26","Day-time safety issues (e.g., theft, home invasion, or drug activities)"],
+  ["2B-27","Night-time safety issues (e.g., theft, home invasion, or drug activities)"]
+];
+
+/* ===================================================================
+   STATE + SCHEMA (column order)
+   =================================================================== */
+const answers = {};
+const SCHEMA = [];   // ordered list of column keys
+const PDF_ROWS = []; // ordered {type, ...} for PDF generation
+
+/* ===================================================================
+   DOM HELPERS
+   =================================================================== */
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if(attrs) for(const k in attrs){
+    const v = attrs[k];
+    if(k === "class") e.className = v;
+    else if(k === "text") e.textContent = v;
+    else if(k === "html") e.innerHTML = v;
+    else e.setAttribute(k, v);
+  }
+  for(const c of kids){ if(c==null||c===false) continue; e.append(c.nodeType?c:document.createTextNode(c)); }
+  return e;
+}
+
+function optionRow(groupName, value){
+  const input = h("input",{type:"radio",name:groupName,value:value});
+  return h("label",{class:"opt"}, input, h("span",{class:"opt-text",text:value}));
+}
+
+function questionBlock(prompt, groupName, options, cls){
+  const fs = h("fieldset",{class:"qblock "+cls,"aria-label":prompt});
+  fs.append(h("div",{class:"qprompt",text:prompt}));
+  const wrap = h("div",{class:"opts"});
+  options.forEach(o=> wrap.append(optionRow(groupName,o)));
+  fs.append(wrap);
+  return fs;
+}
+
+/* Build one two-question item and register its columns */
+function itemBlock(part, code, text){
+  const qiKey  = code + " \u00b7 " + text + " \u00b7 Perception";
+  const qiiKey = code + " \u00b7 " + text + " \u00b7 " + part.qiiShort;
+  SCHEMA.push(qiKey, qiiKey);
+  PDF_ROWS.push({type:"item", text:text, qiKey:qiKey, qiiKey:qiiKey, qiiLabel:part.qiiShort});
+
+  const box = h("div",{class:"item"});
+  box.append(h("div",{class:"item-name",text:text}));
+
+  const qi = questionBlock(part.qiPrompt, "qi::"+qiKey, part.qiOptions, "qi req");
+  box.append(qi);
+
+  const qii = questionBlock(part.qiiPrompt, "qii::"+qiiKey, part.qiiOptions, "qii req hidden");
+  box.append(qii);
+
+  box._qiKey = qiKey;
+  box._qiiKey = qiiKey;
+  return box;
+}
+
+function catTitle(t){ return h("div",{class:"cat-title",text:t}); }
+
+function itemGroup(part, items){
+  const frag = document.createDocumentFragment();
+  items.forEach(([code,text])=> frag.append(itemBlock(part,code,text)));
+  return frag;
+}
+
+/* ===================================================================
+   BUILD DISPLAYS
+   =================================================================== */
+const displaysHost = document.getElementById("displays");
+const PROGRESS = [0,20,40,60,80,100];
+const displayEls = [];
+
+function makeDisplay(idx){
+  const sec = h("section",{class:"display card","data-index":idx});
+  displaysHost.append(sec);
+  displayEls.push(sec);
+  return sec;
+}
+
+function nav(idx, isLast){
+  const wrap = h("div",{class:"nav"});
+  const back = h("button",{class:"btn-ghost",type:"button","data-back":idx}, idx===0?"\u2190 Intro":"\u2190 Back");
+  const err = h("span",{class:"err-inline","data-err":idx});
+  const next = isLast
+    ? h("button",{class:"btn-primary","data-submit":"1"},"Submit my answers")
+    : h("button",{class:"btn-primary","data-next":idx},"Next \u2192");
+  wrap.append(back, err, next);
+  return wrap;
+}
+
+const skipNote = () => h("p",{class:"hint",style:"margin:-8px 0 4px",
+  html:"If you choose <em>Irrelevant\u2026</em> or <em>Not sure / Never experienced it</em>, the follow-up question is skipped automatically."});
+
+/* ---- DEMOGRAPHICS builder ---- */
+function buildDemographics(){
+  const frag = document.createDocumentFragment();
+  SCHEMA.push("Code assigned","Postal code (FSA)","Age","Gender","Immigration status","Immigrant duration");
+
+  // Code assigned (mandatory)
+  const codeField = h("div",{class:"field"});
+  codeField.append(h("label",{class:"flabel",for:"f-code"},"Code assigned ", h("span",{class:"tag",text:"(required)"})));
+  codeField.append(h("input",{type:"text",id:"f-code",name:"__code",autocomplete:"off","data-reqtext":"1"}));
+  codeField.append(h("div",{class:"hint",text:"Enter the participant code given to you by the research team."}));
+  frag.append(codeField);
+
+  // Postal (mandatory, soft format check)
+  const pc = h("div",{class:"field"});
+  pc.append(h("label",{class:"flabel",for:"f-postal"},"Postal code \u2014 first 3 characters ", h("span",{class:"tag",text:"(required, e.g., M4K)"})));
+  pc.append(h("input",{type:"text",id:"f-postal",name:"__postal",maxlength:"3",autocomplete:"off","data-reqtext":"1",style:"max-width:180px;text-transform:uppercase;"}));
+  pc.append(h("div",{class:"hint",id:"postal-hint"}));
+  frag.append(pc);
+
+  // Age (optional)
+  const age = h("fieldset",{class:"field qblock"});
+  age.append(h("legend",{class:"flabel"},"Age ", h("span",{class:"tag",text:"(optional)"})));
+  const ageOpts = h("div",{class:"opts"});
+  ["19\u201329","30\u201339","40\u201349","50\u201359","60\u201364","65+"].forEach(o=> ageOpts.append(optionRow("Age",o)));
+  age.append(ageOpts); frag.append(age);
+
+  // Gender (optional)
+  const gender = h("fieldset",{class:"field qblock"});
+  gender.append(h("legend",{class:"flabel"},"Gender ", h("span",{class:"tag",text:"(optional)"})));
+  const gOpts = h("div",{class:"opts"});
+  ["Male","Female","Other","Prefer not to say"].forEach(o=> gOpts.append(optionRow("Gender",o)));
+  gender.append(gOpts); frag.append(gender);
+
+  // Immigration status (optional) + conditional duration
+  const status = h("fieldset",{class:"field qblock"});
+  status.append(h("legend",{class:"flabel"},"Immigration status ", h("span",{class:"tag",text:"(optional)"})));
+  const sOpts = h("div",{class:"opts"});
+  ["Canadian-born",
+   "Immigrant (landed / permanent resident)",
+   "Refugee (claimant or conventional)",
+   "Temporary resident (e.g., work or study permit holder)"
+  ].forEach(o=> sOpts.append(optionRow("Immigration status",o)));
+  status.append(sOpts); frag.append(status);
+
+  const dur = h("fieldset",{class:"field qblock hidden",id:"dur-block",style:"margin-top:-8px;padding:16px 16px 6px;border-left:3px solid var(--green-tint-line);background:var(--green-tint);border-radius:0 10px 10px 0;"});
+  dur.append(h("div",{class:"qprompt",text:"For immigrants: how long ago did you arrive in Canada?"}));
+  const dOpts = h("div",{class:"opts"});
+  ["Recent \u2014 arrived in the last 5 years",
+   "Mid \u2014 arrived 6\u201310 years ago",
+   "Long-term \u2014 arrived more than 10 years ago"
+  ].forEach(o=> dOpts.append(optionRow("Immigrant duration",o)));
+  dur.append(dOpts); frag.append(dur);
+
+  return frag;
+}
+
+/* ---- Display 0: demographics + Part 1A (Pleasantness + Readiness) ---- */
+(function(){
+  const sec = makeDisplay(0);
+  sec.append(h("p",{class:"eyebrow"},"About you"));
+  sec.append(h("h2",{class:"part-title"},"A few details first"));
+  sec.append(h("p",{class:"part-sub"},"These help us understand who is taking part. Name and postal code are optional."));
+  sec.append(buildDemographics());
+  sec.append(h("div",{class:"divider"}));
+  sec.append(h("p",{class:"eyebrow"},"Part 1A"));
+  sec.append(h("h2",{class:"part-title"},"Facilities and destinations that may encourage your walking"));
+  sec.append(h("p",{class:"part-sub"},"For each item, tell us how much it would encourage your walking, and where you usually experience it."));
+  sec.append(skipNote());
+  sec.append(catTitle("Pleasantness and comfortableness"));
+  sec.append(itemGroup(P1A, ITEMS_1A_pleasant));
+  sec.append(catTitle("Readiness for hot and cold weather conditions"));
+  sec.append(itemGroup(P1A, ITEMS_1A_ready));
+  sec.append(nav(0,false));
+})();
+
+/* ---- Display 1: Part 1A (Access to services) ---- */
+(function(){
+  const sec = makeDisplay(1);
+  sec.append(h("p",{class:"eyebrow"},"Part 1A \u00b7 continued"));
+  sec.append(h("h2",{class:"part-title"},"Access to utility and recreational services"));
+  sec.append(h("p",{class:"part-sub"},"Still thinking about what encourages your walking."));
+  sec.append(skipNote());
+  sec.append(catTitle("Access to utility / recreational services"));
+  sec.append(itemGroup(P1A, ITEMS_1A_access));
+  sec.append(nav(1,false));
+})();
+
+/* ---- Display 2: Part 1B ---- */
+(function(){
+  const sec = makeDisplay(2);
+  sec.append(h("p",{class:"eyebrow"},"Part 1B"));
+  sec.append(h("h2",{class:"part-title"},"Neighbourhood conditions that may encourage your walking"));
+  sec.append(h("p",{class:"part-sub"},"For each condition, tell us how much it would encourage your walking, and whether it exists in your neighbourhood."));
+  sec.append(skipNote());
+  sec.append(itemGroup(P1B, ITEMS_1B));
+  sec.append(nav(2,false));
+})();
+
+/* ---- Display 3: Part 2A ---- */
+(function(){
+  const sec = makeDisplay(3);
+  sec.append(h("p",{class:"eyebrow"},"Part 2A"));
+  sec.append(h("h2",{class:"part-title"},"Situations and places that may discourage your walking"));
+  sec.append(h("p",{class:"part-sub"},"Now we turn to things that may make you walk less. Tell us how much each discourages your walking, and where you usually experience it."));
+  sec.append(skipNote());
+  sec.append(catTitle("Neighbourhood and street conditions"));
+  sec.append(itemGroup(P2A, ITEMS_2A_street));
+  sec.append(catTitle("Night-time neighbourhood"));
+  sec.append(itemGroup(P2A, ITEMS_2A_night));
+  sec.append(nav(3,false));
+})();
+
+/* ---- Display 4: Part 2B ---- */
+(function(){
+  const sec = makeDisplay(4);
+  sec.append(h("p",{class:"eyebrow"},"Part 2B"));
+  sec.append(h("h2",{class:"part-title"},"Neighbourhood conditions that may discourage your walking"));
+  sec.append(h("p",{class:"part-sub"},"For each condition, tell us how much it discourages your walking, and whether it exists in your neighbourhood."));
+  sec.append(skipNote());
+  sec.append(catTitle("Appropriateness of the neighbourhood"));
+  sec.append(itemGroup(P2B, ITEMS_2B_appro));
+  sec.append(catTitle("Perception of safety"));
+  sec.append(itemGroup(P2B, ITEMS_2B_safety));
+  sec.append(nav(4,false));
+})();
+
+/* ---- Display 5: Final questions ---- */
+(function(){
+  const sec = makeDisplay(5);
+  sec.append(h("p",{class:"eyebrow"},"Final questions"));
+  sec.append(h("h2",{class:"part-title"},"Almost done"));
+  sec.append(h("p",{class:"part-sub"},"Two last questions before you submit."));
+
+  SCHEMA.push("Survey coverage opinion");
+  PDF_ROWS.push({type:"final", text:"Do you think the survey covers all aspects that may encourage or discourage your walking?", key:"Survey coverage opinion"});
+  const cov = h("fieldset",{class:"field qblock"}); // optional
+  cov.append(h("legend",{class:"flabel"},"Do you think the survey covers all aspects that may encourage or discourage your walking? ", h("span",{class:"tag",text:"(optional)"})));
+  const cOpts = h("div",{class:"opts"});
+  ["Strongly agree","Agree","Neutral","Disagree","Strongly disagree"].forEach(o=> cOpts.append(optionRow("Survey coverage opinion",o)));
+  cov.append(cOpts); sec.append(cov);
+
+  SCHEMA.push("Weekly walking time");
+  PDF_ROWS.push({type:"final", text:"On average, how long do you spend walking for recreational / non-recreational purposes per week?", key:"Weekly walking time"});
+  const wk = h("fieldset",{class:"field qblock req"});
+  wk.append(h("legend",{class:"flabel"},"On average, how long do you spend walking for recreational / non-recreational purposes per week? ", h("span",{class:"tag",text:"(required)"})));
+  const wOpts = h("div",{class:"opts"});
+  ["None","Less than an hour","1\u20132 hours","3\u20134 hours","5\u20137 hours","More than 7 hours"].forEach(o=> wOpts.append(optionRow("Weekly walking time",o)));
+  wk.append(wOpts); sec.append(wk);
+
+  sec.append(nav(5,true));
+})();
+
+/* ===================================================================
+   INTERACTION
+   =================================================================== */
+const form = document.getElementById("displays");
+
+form.addEventListener("change",(ev)=>{
+  const input = ev.target;
+  if(input.type !== "radio") return;
+  const name = input.name;
+
+  // clear invalid highlight on the answered block
+  const ownFs = input.closest("fieldset");
+  if(ownFs) ownFs.classList.remove("invalid");
+  const ownItem = input.closest(".item");
+  if(ownItem) ownItem.classList.remove("invalid");
+
+  if(name.startsWith("qi::")){
+    const box = input.closest(".item");
+    answers[box._qiKey] = input.value;
+    const qii = box.querySelector(".qii");
+    if(SKIP_VALS.includes(input.value)){
+      qii.classList.add("hidden");
+      qii.querySelectorAll("input").forEach(i=> i.checked=false);
+      answers[box._qiiKey] = "";
+      qii.classList.remove("invalid");
+    } else {
+      qii.classList.remove("hidden");
+    }
+  } else if(name.startsWith("qii::")){
+    const box = input.closest(".item");
+    answers[box._qiiKey] = input.value;
+  } else if(name === "Immigration status"){
+    answers[name] = input.value;
+    const dur = document.getElementById("dur-block");
+    if(input.value.indexOf("Immigrant") === 0){
+      dur.classList.remove("hidden");
+    } else {
+      dur.classList.add("hidden");
+      dur.querySelectorAll("input").forEach(i=> i.checked=false);
+      answers["Immigrant duration"] = "";
+      dur.classList.remove("invalid");
+    }
+  } else {
+    answers[name] = input.value;
+  }
+});
+
+/* postal soft format check (field is required; format is a nudge) */
+document.getElementById("f-postal").addEventListener("input",(e)=>{
+  e.target.classList.remove("invalid");
+  const v = e.target.value.trim().toUpperCase();
+  const hint = document.getElementById("postal-hint");
+  if(v.length===0){ hint.textContent=""; hint.className="hint"; return; }
+  if(/^[A-Z]\d[A-Z]$/.test(v)){ hint.textContent="Looks good."; hint.className="hint"; }
+  else { hint.textContent="Tip: a Canadian format looks like M4K (letter\u2013number\u2013letter)."; hint.className="hint warn"; }
+});
+document.getElementById("f-code").addEventListener("input",(e)=> e.target.classList.remove("invalid"));
+
+/* ===================================================================
+   NAVIGATION
+   =================================================================== */
+let current = -1; // -1 = intro
+
+function showProgress(idx){
+  const wrap = document.getElementById("progress-wrap");
+  wrap.style.display = "block";
+  document.getElementById("progress-fill").style.width = PROGRESS[idx] + "%";
+  document.getElementById("progress-pct").textContent = PROGRESS[idx] + "%";
+  document.getElementById("progress-label").textContent = "Section " + (idx+1) + " of 6";
+}
+
+function goTo(idx){
+  document.getElementById("intro").classList.remove("active");
+  document.getElementById("thanks").classList.remove("active");
+  displayEls.forEach(d=> d.classList.remove("active"));
+  displayEls[idx].classList.add("active");
+  current = idx;
+  showProgress(idx);
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function validateDisplay(sec){
+  // required text fields first, in document order
+  const texts = sec.querySelectorAll("input[data-reqtext]");
+  for(const t of texts){
+    if(t.value.trim() === ""){ return t; }
+  }
+  const reqs = sec.querySelectorAll("fieldset.req:not(.hidden)");
+  for(const fs of reqs){
+    if(!fs.querySelector("input:checked")) return fs;
+  }
+  return null;
+}
+
+document.getElementById("start-btn").addEventListener("click",()=> goTo(0));
+
+form.addEventListener("click",(ev)=>{
+  const t = ev.target;
+
+  if(t.dataset.back !== undefined){
+    const idx = +t.dataset.back;
+    if(idx===0){ // back to intro
+      displayEls.forEach(d=> d.classList.remove("active"));
+      document.getElementById("progress-wrap").style.display="none";
+      document.getElementById("intro").classList.add("active");
+      current=-1; window.scrollTo({top:0,behavior:"smooth"});
+    } else { goTo(idx-1); }
+    return;
+  }
+
+  if(t.dataset.next !== undefined){
+    const idx = +t.dataset.next;
+    const sec = displayEls[idx];
+    const bad = validateDisplay(sec);
+    const err = sec.querySelector('[data-err="'+idx+'"]');
+    if(bad){
+      bad.classList.add("invalid");
+      const itemBox = bad.closest(".item"); if(itemBox) itemBox.classList.add("invalid");
+      err.textContent = "Please complete the highlighted field to continue.";
+      (itemBox||bad).scrollIntoView({behavior:"smooth", block:"center"});
+      return;
+    }
+    err.textContent = "";
+    goTo(idx+1);
+    return;
+  }
+
+  if(t.dataset.submit !== undefined){
+    const sec = displayEls[5];
+    const bad = validateDisplay(sec);
+    const err = sec.querySelector('[data-err="5"]');
+    if(bad){
+      bad.classList.add("invalid");
+      err.textContent = "Please answer the required question to submit.";
+      bad.scrollIntoView({behavior:"smooth", block:"center"});
+      return;
+    }
+    err.textContent = "";
+    submitSurvey(t);
+    return;
+  }
+});
+
+/* ===================================================================
+   SUBMISSION
+   =================================================================== */
+function buildPayload(){
+  answers["Code assigned"] = document.getElementById("f-code").value.trim();
+  answers["Postal code (FSA)"] = document.getElementById("f-postal").value.trim().toUpperCase();
+  const p = {};
+  SCHEMA.forEach(k=> p[k] = (answers[k]!=null ? answers[k] : ""));
+  return p;
+}
+
+async function submitSurvey(btn){
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = "Saving your responses\u2026";
+  const err = displayEls[5].querySelector('[data-err="5"]');
+  err.textContent = "";
+  const payload = buildPayload();
+  window.__lastPayload = payload;
+
+  try{
+    const res = await fetch(SCRIPT_URL, {
+      method:"POST",
+      body: JSON.stringify(payload),
+      redirect:"follow"
+    });
+    // fetch resolved -> request reached the server; treat as saved
+    let serverError = false;
+    try{ const j = await res.json(); if(j && j.result==="error") serverError=true; }catch(_){}
+    if(serverError) throw new Error("server");
+    finish(payload);
+  }catch(e){
+    // fetch rejected (CORS/opaque/network) -> retry write-only
+    try{
+      await fetch(SCRIPT_URL, { method:"POST", body: JSON.stringify(payload), mode:"no-cors" });
+      finish(payload);
+    }catch(e2){
+      btn.disabled = false;
+      btn.textContent = original;
+      err.textContent = "We couldn\u2019t save your responses. Please check your connection and try Submit again.";
+    }
+  }
+}
+
+function finish(payload){
+  document.getElementById("progress-fill").style.width = "100%";
+  document.getElementById("progress-pct").textContent = "100%";
+  displayEls.forEach(d=> d.classList.remove("active"));
+  document.getElementById("progress-wrap").style.display = "none";
+  const thanks = document.getElementById("thanks");
+  thanks.classList.add("active");
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* ===================================================================
+   PDF EXPORT (client-side, jsPDF)
+   =================================================================== */
+document.getElementById("pdf-btn").addEventListener("click",()=>{
+  const payload = window.__lastPayload || buildPayload();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt", format:"letter"});
+  const M = 54, W = 612 - M*2;
+  let y = M;
+
+  function ensure(space){ if(y + space > 792 - M){ doc.addPage(); y = M; } }
+  function write(text, {size=10, style="normal", color=[23,36,31], gap=4, indent=0}={}){
+    doc.setFont("helvetica", style); doc.setFontSize(size); doc.setTextColor(color[0],color[1],color[2]);
+    const lines = doc.splitTextToSize(text, W - indent);
+    lines.forEach(ln=>{ ensure(size+2); doc.text(ln, M+indent, y); y += size+2; });
+    y += gap;
+  }
+  function rule(){ ensure(10); doc.setDrawColor(210,222,214); doc.line(M,y,612-M,y); y+=12; }
+
+  write("Perceived Walkability Survey", {size:18, style:"bold", gap:2});
+  write("Your responses", {size:11, color:[92,107,99], gap:6});
+  write("Completed: " + new Date().toLocaleString(), {size:9, color:[92,107,99], gap:8});
+  rule();
+
+  // Demographics
+  write("About you", {size:13, style:"bold", color:[46,125,91], gap:6});
+  const demo = [
+    ["Code assigned", payload["Code assigned"]],
+    ["Postal code (first 3)", payload["Postal code (FSA)"]],
+    ["Age", payload["Age"]],
+    ["Gender", payload["Gender"]],
+    ["Immigration status", payload["Immigration status"]],
+    ["Immigrant duration", payload["Immigrant duration"]]
+  ];
+  demo.forEach(([label,val])=>{
+    if(val && String(val).trim()!==""){
+      write(label + ": " + val, {size:10, gap:2});
+    }
+  });
+  y += 6; rule();
+
+  // Items + final
+  const partHeaders = {
+    "1A":"Part 1A \u2014 Facilities and destinations that may encourage walking",
+    "1B":"Part 1B \u2014 Neighbourhood conditions that may encourage walking",
+    "2A":"Part 2A \u2014 Situations and places that may discourage walking",
+    "2B":"Part 2B \u2014 Neighbourhood conditions that may discourage walking"
+  };
+  let lastPart = "";
+  let finalHeaderDone = false;
+
+  PDF_ROWS.forEach(row=>{
+    if(!row) return;
+    if(row.type==="item"){
+      const code = row.qiKey.split(" \u00b7 ")[0];
+      const part = code.split("-")[0];
+      if(part!==lastPart){
+        y+=2; write(partHeaders[part]||part, {size:13, style:"bold", color:[46,125,91], gap:6});
+        lastPart = part;
+      }
+      const per = payload[row.qiKey] || "\u2014";
+      write(row.text, {size:10.5, style:"bold", gap:2});
+      write("Perception: " + per, {size:10, color:[60,72,66], indent:14, gap:2});
+      const follow = payload[row.qiiKey];
+      const flabel = row.qiiLabel==="Location" ? "Where experienced" : "Exists in neighbourhood";
+      if(follow && String(follow).trim()!==""){
+        write(flabel + ": " + follow, {size:10, color:[60,72,66], indent:14, gap:6});
+      } else {
+        write("(follow-up skipped)", {size:9.5, style:"italic", color:[130,140,134], indent:14, gap:6});
+      }
+    } else if(row.type==="final"){
+      if(!finalHeaderDone){ y+=2; rule(); write("Final questions", {size:13, style:"bold", color:[46,125,91], gap:6}); finalHeaderDone=true; }
+      const val = payload[row.key];
+      write(row.text, {size:10.5, style:"bold", gap:2});
+      write((val && String(val).trim()!=="") ? val : "(no answer)", {size:10, color:[60,72,66], indent:14, gap:6});
+    }
+  });
+
+  doc.save("walkability-survey-responses.pdf");
+});
+</script>
+</body>
+</html>
