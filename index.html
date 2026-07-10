@@ -479,9 +479,9 @@ function buildDemographics(){
   const frag = document.createDocumentFragment();
   SCHEMA.push("Code assigned","Postal code (FSA)","Age","Gender","Immigration status","Immigrant duration");
 
-  // Code assigned (shared in the email) (mandatory)
+  // Code assigned (mandatory)
   const codeField = h("div",{class:"field"});
-  codeField.append(h("label",{class:"flabel",for:"f-code"},"Code assigned ", h("span",{class:"tag",text:"(required)"})));
+  codeField.append(h("label",{class:"flabel",for:"f-code"},"Code assigned ", h("span",{class:"tag",text:"(required / shared with you by email)"})));
   codeField.append(h("input",{type:"text",id:"f-code",name:"__code",autocomplete:"off","data-reqtext":"1"}));
   codeField.append(h("div",{class:"hint",text:"Enter the participant code given to you by the research team."}));
   frag.append(codeField);
